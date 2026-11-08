@@ -1,0 +1,9 @@
+{
+  "name": "com.razvan.ytdl",
+  "description": "Native host for the ytdl Brave extension",
+  "path": "HOST_PATH_PLACEHOLDER",
+  "type": "stdio",
+  "allowed_origins": [
+    "chrome-extension://EXTENSION_ID_PLACEHOLDER/"
+  ]
+}

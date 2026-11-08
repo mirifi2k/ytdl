@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ytdl</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header>
+      <div class="brand">ytdl</div>
+      <p id="page-title" class="page-title">Loading…</p>
+    </header>
+
+    <section id="status-block" class="status" hidden></section>
+
+    <section id="main" hidden>
+      <label class="field-label" for="filter">Folder</label>
+      <input
+        id="filter"
+        type="search"
+        placeholder="Filter folders…"
+        autocomplete="off"
+        spellcheck="false"
+      />
+
+      <div id="folders" class="folders" role="listbox" aria-label="Music folders"></div>
+
+      <button id="download" type="button" disabled>Download</button>
+      <p id="hint" class="hint">Keep this popup open while downloading.</p>
+    </section>
+
+    <pre id="log" class="log" hidden></pre>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
