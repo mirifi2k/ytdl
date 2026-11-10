@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HOST_SRC="$SCRIPT_DIR/ytdl_host.py"
-HOST_NAME="com.razvan.ytdl"
+HOST_NAME="com.ytdl"
 INSTALL_DIR="${HOME}/.local/share/ytdl-native-host"
 HOST_DST="$INSTALL_DIR/ytdl_host.py"
 
@@ -82,7 +82,7 @@ write_manifest() {
 import json, sys
 host_path, ext_id, dest = sys.argv[1:4]
 manifest = {
-    "name": "com.razvan.ytdl",
+    "name": "com.ytdl",
     "description": "Native host for the ytdl Brave extension",
     "path": host_path,
     "type": "stdio",
@@ -105,4 +105,4 @@ if [ -d "$(dirname "$CHROME_NM_DIR")" ]; then
 fi
 
 echo
-echo "Reload the ytdl extension in brave://extensions, then open a YouTube video."
+echo "Reload the ytdl extension in brave://extensions, then open a YouTube video or SoundCloud track."

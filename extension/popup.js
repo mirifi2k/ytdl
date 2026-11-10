@@ -1,4 +1,4 @@
-const HOST = "com.razvan.ytdl";
+const HOST = "com.ytdl";
 
 const pageTitleEl = document.getElementById("page-title");
 const statusBlock = document.getElementById("status-block");
@@ -35,41 +35,6 @@ function appendLog(line) {
     ? `${logEl.textContent}\n${line}`
     : line;
   logEl.scrollTop = logEl.scrollHeight;
-}
-
-function normalizeWatchUrl(url) {
-  try {
-    const u = new URL(url);
-    if (u.hostname === "youtu.be") {
-      const id = u.pathname.replace(/^\//, "");
-      return id ? `https://www.youtube.com/watch?v=${id}` : url;
-    }
-    const id = u.searchParams.get("v");
-    if (id) {
-      return `https://www.youtube.com/watch?v=${id}`;
-    }
-    return url;
-  } catch (_) {
-    return url;
-  }
-}
-
-function isYouTubeWatchUrl(url) {
-  if (!url) return false;
-  try {
-    const u = new URL(url);
-    if (u.hostname === "youtu.be" && u.pathname.length > 1) return true;
-    if (
-      /^(www\.|m\.|music\.)?youtube\.com$/i.test(u.hostname) &&
-      u.pathname === "/watch" &&
-      u.searchParams.get("v")
-    ) {
-      return true;
-    }
-  } catch (_) {
-    return false;
-  }
-  return false;
 }
 
 function connectNative() {
@@ -205,13 +170,13 @@ async function init() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   const url = tab?.url || "";
 
-  if (!isYouTubeWatchUrl(url)) {
-    pageTitleEl.textContent = "Not a YouTube video page";
-    showStatus("Open a YouTube watch page, then try again.", "error");
+  if (!isSupportedTrackUrl(url)) {
+    pageTitleEl.textContent = "Not a supported track page";
+    showStatus("Open a YouTube video or SoundCloud track, then try again.", "error");
     return;
   }
 
-  videoUrl = normalizeWatchUrl(url);
+  videoUrl = normalizeTrackUrl(url);
   pageTitleEl.textContent = tab.title || videoUrl;
 
   try {

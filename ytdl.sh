@@ -15,6 +15,7 @@ usage() {
     echo
     echo "Examples:"
     echo '  ytdl "https://music.youtube.com/watch?v=..." Music'
+    echo '  ytdl "https://soundcloud.com/artist/track" Music'
     echo '  ytdl "https://youtube.com/watch?v=..." "Junior Jack" "Stupidisco" Music'
     echo '  ytdl "https://youtube.com/watch?v=..." "Mau P" "Drugs From Amsterdam (Original Mix)" "Music/House"'
 }
@@ -44,7 +45,13 @@ fi
 # Dependencies
 # ------------------------------------------------------------
 
-for command in yt-dlp ffmpeg ffprobe python3; do
+downloader="yt-dlp"
+if [[ "$link" =~ ^https?://(www\.|m\.)?soundcloud\.com/ ]] ||
+   [[ "$link" =~ ^https?://(on\.soundcloud\.com|soundcloud\.app\.goo\.gl)/ ]]; then
+    downloader="scdl"
+fi
+
+for command in "$downloader" ffmpeg ffprobe python3; do
     if ! command -v "$command" >/dev/null 2>&1; then
         echo "ERROR: '$command' is not installed or not in PATH." >&2
         exit 1
@@ -117,7 +124,10 @@ info_file="$tmpdir/info.txt"
 
 echo "Downloading..."
 
-yt-dlp \
+if [ "$downloader" = "scdl" ]; then
+    scdl -l "$link" --path "$tmpdir" --no-playlist --no-original
+else
+    yt-dlp \
     --quiet \
     --no-playlist \
     --progress \
@@ -130,20 +140,57 @@ yt-dlp \
         'after_move:%(filepath)s|||%(artist)s|||%(track)s|||%(title)s' \
         "$info_file" \
     "$link"
+fi
 
 status=$?
 
 if [ "$status" -ne 0 ]; then
-    echo "ERROR: yt-dlp failed with exit code $status." >&2
+    echo "ERROR: $downloader failed with exit code $status." >&2
     exit "$status"
 fi
 
 # ------------------------------------------------------------
-# Read yt-dlp metadata
+# Read downloader metadata
 # ------------------------------------------------------------
 
+if [ "$downloader" = "scdl" ]; then
+    # scdl embeds the source metadata. Inspect audio rather than parsing its logs
+    # or assuming a filename/extension (streams can be MP3 or M4A).
+    python3 - "$tmpdir" "$info_file" <<'PYSC'
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+files = []
+for path in Path(sys.argv[1]).rglob("*"):
+    if not path.is_file():
+        continue
+    probe = subprocess.run(
+        ["ffprobe", "-v", "quiet", "-show_format", "-show_streams", "-of", "json", str(path)],
+        capture_output=True, text=True,
+    )
+    if probe.returncode:
+        continue
+    data = json.loads(probe.stdout)
+    if any(stream.get("codec_type") == "audio" for stream in data.get("streams", [])):
+        tags = {key.lower(): value for key, value in data.get("format", {}).get("tags", {}).items()}
+        files.append((path, tags))
+if len(files) != 1:
+    sys.exit(f"ERROR: scdl must download exactly one audio track; found {len(files)}.")
+path, tags = files[0]
+# Leave track empty so artist/title patterns in SoundCloud titles take priority
+# over the uploader name, while retaining artist as a fallback.
+values = [str(path), tags.get("artist", ""), "", tags.get("title") or path.stem]
+Path(sys.argv[2]).write_text("|||".join(values) + "\n")
+PYSC
+    if [ "$?" -ne 0 ]; then
+        exit 1
+    fi
+fi
+
 if [ ! -s "$info_file" ]; then
-    echo "ERROR: yt-dlp did not report the downloaded file." >&2
+    echo "ERROR: $downloader did not report the downloaded file." >&2
     exit 1
 fi
 

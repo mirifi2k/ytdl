@@ -1,21 +1,14 @@
-const YT_WATCH =
-  /^(https?:\/\/)?(www\.|m\.|music\.)?youtube\.com\/watch\b/i;
-const YT_SHORT = /^(https?:\/\/)?youtu\.be\//i;
-
-function isYouTubeWatchUrl(url) {
-  if (!url) return false;
-  return YT_WATCH.test(url) || YT_SHORT.test(url);
-}
+importScripts("urls.js");
 
 async function updateActionForTab(tabId, url) {
-  if (isYouTubeWatchUrl(url)) {
+  if (isSupportedTrackUrl(url)) {
     await chrome.action.enable(tabId);
-    await chrome.action.setTitle({ tabId, title: "ytdl — download this video" });
+    await chrome.action.setTitle({ tabId, title: "ytdl — download this track" });
   } else {
     await chrome.action.disable(tabId);
     await chrome.action.setTitle({
       tabId,
-      title: "ytdl — open a YouTube video",
+      title: "ytdl — open a YouTube or SoundCloud track",
     });
   }
 }

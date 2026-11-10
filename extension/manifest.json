@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "ytdl",
-  "version": "1.0.0",
-  "description": "Download the current YouTube video with the local ytdl CLI into a Music folder.",
+  "version": "1.1.0",
+  "description": "Download YouTube videos and SoundCloud tracks with the local ytdl CLI into a Music folder.",
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",
@@ -30,6 +30,11 @@
     "https://www.youtube.com/*",
     "https://music.youtube.com/*",
     "https://m.youtube.com/*",
-    "https://youtu.be/*"
+    "https://youtu.be/*",
+    "https://soundcloud.com/*",
+    "https://www.soundcloud.com/*",
+    "https://m.soundcloud.com/*",
+    "https://on.soundcloud.com/*",
+    "https://soundcloud.app.goo.gl/*"
   ]
 }

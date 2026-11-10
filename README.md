@@ -1,6 +1,6 @@
 # ytdl
 
-CLI plus a Brave extension for downloading the current YouTube video into a folder under `/Volumes/SSD/Music`.
+CLI plus a Brave extension for downloading the current YouTube video or SoundCloud track into a folder under `/Volumes/SSD/Music`.
 
 ## CLI
 
@@ -8,6 +8,15 @@ CLI plus a Brave extension for downloading the current YouTube video into a fold
 ytdl <url> <folder>
 ytdl <url> <artist> <track> <folder>
 ```
+
+SoundCloud track URLs use [scdl](https://github.com/scdl-org/scdl); YouTube URLs use `yt-dlp`. Install `scdl` (for example, `pipx install scdl`), `yt-dlp`, `ffmpeg` (including `ffprobe`), and Python 3 with `mutagen`. Ensure these commands are on the native host's PATH (`/opt/homebrew/bin` and `/usr/local/bin` are included).
+
+```bash
+ytdl "https://soundcloud.com/artist/track" "Music/House"
+ytdl "https://soundcloud.com/artist/track" "Artist" "Track" "Music/House"
+```
+
+SoundCloud downloads use the best available stream, then the same metadata parsing, tagging, and renaming as YouTube. Manual artist/track overrides work for both. Open individual tracks rather than profiles or playlists; private track URLs retain their access token.
 
 `folder` is relative to `/Volumes/SSD/Music`.
 
@@ -34,7 +43,7 @@ This installs the host under `~/.local/share/ytdl-native-host/` and registers it
 
 1. Mount the SSD so `/Volumes/SSD/Music` exists
 2. Ensure `ytdl` is on your `PATH` (e.g. `/usr/local/bin/ytdl`)
-3. Open a YouTube (or YouTube Music) watch page
+3. Open a YouTube (or YouTube Music) watch page, or a SoundCloud track page
 4. Click the **ytdl** toolbar icon
 5. Pick a folder and click **Download**
 

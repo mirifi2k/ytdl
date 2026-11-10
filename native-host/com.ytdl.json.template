@@ -1,5 +1,5 @@
 {
-  "name": "com.razvan.ytdl",
+  "name": "com.ytdl",
   "description": "Native host for the ytdl Brave extension",
   "path": "HOST_PATH_PLACEHOLDER",
   "type": "stdio",
