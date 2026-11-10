@@ -47,7 +47,7 @@ This installs the host under `~/.local/share/ytdl-native-host/` and registers it
 4. Click the **ytdl** toolbar icon
 5. Pick a folder and click **Download**
 
-Keep the popup open until the download finishes.
+You can close the popup while downloading. The toolbar badge shows ↓ while downloading, ✓ when finished, or ! if it fails. Reopen the popup to see progress and the result. One download runs at a time; keep Brave running until it finishes.
 
 ### Reload after changes
 

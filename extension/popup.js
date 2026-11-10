@@ -1,5 +1,3 @@
-const HOST = "com.ytdl";
-
 const pageTitleEl = document.getElementById("page-title");
 const statusBlock = document.getElementById("status-block");
 const mainEl = document.getElementById("main");
@@ -11,7 +9,6 @@ const logEl = document.getElementById("log");
 let folders = [];
 let selectedFolder = null;
 let videoUrl = null;
-let port = null;
 let downloading = false;
 
 function showStatus(message, kind = "") {
@@ -26,64 +23,22 @@ function showLog(text, kind = "") {
   logEl.textContent = text;
 }
 
-function appendLog(line) {
-  logEl.hidden = false;
-  if (!logEl.className.includes("log")) {
-    logEl.className = "log";
-  }
-  logEl.textContent = logEl.textContent
-    ? `${logEl.textContent}\n${line}`
-    : line;
-  logEl.scrollTop = logEl.scrollHeight;
-}
-
-function connectNative() {
-  return new Promise((resolve, reject) => {
-    let p;
-    try {
-      p = chrome.runtime.connectNative(HOST);
-    } catch (err) {
-      reject(err);
-      return;
-    }
-
-    const onDisconnect = () => {
-      const err =
-        chrome.runtime.lastError?.message || "Native host disconnected.";
-      reject(new Error(err));
-    };
-
-    const onMessage = (msg) => {
-      p.onMessage.removeListener(onMessage);
-      p.onDisconnect.removeListener(onDisconnect);
-      resolve({ port: p, firstMessage: msg });
-    };
-
-    p.onDisconnect.addListener(onDisconnect);
-    p.onMessage.addListener(onMessage);
-    p.postMessage({ cmd: "status" });
-  });
-}
-
 function request(cmd, payload = {}) {
-  return new Promise((resolve, reject) => {
-    if (!port) {
-      reject(new Error("Native host is not connected."));
-      return;
-    }
+  return chrome.runtime.sendMessage({ cmd, ...payload });
+}
 
-    const onMessage = (msg) => {
-      if (msg.type === "progress") {
-        appendLog(msg.line);
-        return;
-      }
-      port.onMessage.removeListener(onMessage);
-      resolve(msg);
-    };
+function renderDownload(state) {
+  downloading = state.running;
+  downloadBtn.textContent = downloading ? "Downloading…" : "Download";
+  downloadBtn.disabled = downloading || !selectedFolder || !videoUrl;
+  if (state.url) {
+    const context = `${state.url} → ${state.folder}`;
+    showLog(`${context}\n\n${state.log}`, downloading ? "" : state.ok ? "success" : "error");
+  }
+}
 
-    port.onMessage.addListener(onMessage);
-    port.postMessage({ cmd, ...payload });
-  });
+async function refreshDownload() {
+  renderDownload(await request("download_state"));
 }
 
 function renderFolders() {
@@ -141,28 +96,17 @@ async function startDownload() {
 
   downloading = true;
   downloadBtn.disabled = true;
-  downloadBtn.textContent = "Downloading…";
-  showLog("Starting download…");
-
   try {
     const res = await request("download", {
       url: videoUrl,
       folder: selectedFolder,
     });
-
-    if (!res.ok) {
-      showLog(res.error || res.output || "Download failed.", "error");
-      return;
-    }
-
-    const text = [res.output, res.error].filter(Boolean).join("\n").trim();
-    showLog(text || "Done.", "success");
+    if (!res.ok) throw new Error(res.error || "Could not start download.");
+    renderDownload(res.state);
   } catch (err) {
-    showLog(String(err.message || err), "error");
-  } finally {
     downloading = false;
-    downloadBtn.textContent = "Download";
     downloadBtn.disabled = !selectedFolder || !videoUrl;
+    showLog(String(err.message || err), "error");
   }
 }
 
@@ -180,9 +124,8 @@ async function init() {
   pageTitleEl.textContent = tab.title || videoUrl;
 
   try {
-    const connected = await connectNative();
-    port = connected.port;
-    const status = connected.firstMessage;
+    await refreshDownload();
+    const status = await request("status");
 
     if (!status.ok) {
       showStatus(status.error || "Native host error.", "error");
@@ -205,6 +148,7 @@ async function init() {
     showStatus(`Ready · ${status.ytdl_path || "ytdl"}`, "ok");
     mainEl.hidden = false;
     await loadFolders();
+    setInterval(() => refreshDownload().catch(() => {}), 500);
   } catch (err) {
     showStatus(
       `${err.message || err}\n\nRun native-host/install.sh after loading the unpacked extension.`,
