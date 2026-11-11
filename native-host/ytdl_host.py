@@ -6,12 +6,15 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import signal
 import struct
 import subprocess
 import sys
+import threading
 from pathlib import Path
 
 DEFAULT_ROOT = Path("/Volumes/SSD/Music")
+OUTPUT_LOCK = threading.Lock()
 
 
 def read_message() -> dict | None:
@@ -29,9 +32,10 @@ def read_message() -> dict | None:
 
 def send_message(message: dict) -> None:
     encoded = json.dumps(message, ensure_ascii=False).encode("utf-8")
-    sys.stdout.buffer.write(struct.pack("<I", len(encoded)))
-    sys.stdout.buffer.write(encoded)
-    sys.stdout.buffer.flush()
+    with OUTPUT_LOCK:
+        sys.stdout.buffer.write(struct.pack("<I", len(encoded)))
+        sys.stdout.buffer.write(encoded)
+        sys.stdout.buffer.flush()
 
 
 def find_ytdl() -> str | None:
@@ -87,7 +91,8 @@ def handle_list_folders(root: Path = DEFAULT_ROOT) -> dict:
     return {"ok": True, "root": str(root), "folders": [".", *list_folders(root)]}
 
 
-def handle_download(url: str, folder: str, root: Path = DEFAULT_ROOT) -> dict:
+def handle_download(url: str, folder: str, root: Path = DEFAULT_ROOT,
+                    cancel: threading.Event | None = None) -> dict:
     ytdl = find_ytdl()
     if not ytdl:
         return {"ok": False, "error": "ytdl was not found on this computer."}
@@ -122,17 +127,44 @@ def handle_download(url: str, folder: str, root: Path = DEFAULT_ROOT) -> dict:
         text=True,
         env=env,
         bufsize=1,
+        start_new_session=True,
     )
 
+    finished = threading.Event()
+
+    def watch_cancel():
+        while not finished.wait(0.1):
+            if cancel is not None and cancel.is_set():
+                try:
+                    # Stop the shell and its downloader/ffmpeg children together.
+                    os.killpg(proc.pid, signal.SIGTERM)
+                    try:
+                        proc.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        pass
+                    # The shell may have exited while a child still holds stdout.
+                    os.killpg(proc.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                return
+
+    watcher = threading.Thread(target=watch_cancel, daemon=True)
+    watcher.start()
     lines: list[str] = []
     assert proc.stdout is not None
-    for line in proc.stdout:
-        text = line.rstrip("\n")
-        lines.append(text)
-        send_message({"type": "progress", "line": text})
-
-    code = proc.wait()
+    try:
+        for line in proc.stdout:
+            text = line.rstrip("\n")
+            lines.append(text)
+            send_message({"type": "progress", "line": text})
+        code = proc.wait()
+    finally:
+        finished.set()
+        watcher.join()
+        proc.stdout.close()
     output = "\n".join(lines).strip()
+    if code != 0 and cancel is not None and cancel.is_set():
+        return {"ok": False, "canceled": True, "output": "Download canceled.", "code": code}
     if code != 0:
         return {
             "ok": False,
@@ -145,26 +177,42 @@ def handle_download(url: str, folder: str, root: Path = DEFAULT_ROOT) -> dict:
 
 
 def main() -> int:
+    worker = None
+    cancel = threading.Event()
+
+    def download(message, root):
+        try:
+            result = handle_download(str(message.get("url") or ""),
+                                     str(message.get("folder") or ""), root, cancel)
+            send_message(result)
+        except Exception as exc:
+            send_message({"ok": False, "error": str(exc)})
+
     while True:
         message = read_message()
         if message is None:
+            cancel.set()
+            if worker is not None:
+                worker.join()
             return 0
 
         cmd = message.get("cmd")
         try:
+            if cmd == "cancel":
+                cancel.set()
+                continue
             root = download_root(message.get("root"))
             if cmd == "status":
                 send_message(handle_status(root))
             elif cmd == "list_folders":
                 send_message(handle_list_folders(root))
             elif cmd == "download":
-                send_message(
-                    handle_download(
-                        str(message.get("url") or ""),
-                        str(message.get("folder") or ""),
-                        root,
-                    )
-                )
+                if worker is not None and worker.is_alive():
+                    send_message({"type": "progress", "line": "A download is already running."})
+                    continue
+                cancel.clear()
+                worker = threading.Thread(target=download, args=(message, root))
+                worker.start()
             else:
                 send_message({"ok": False, "error": f"Unknown command: {cmd}"})
         except Exception as exc:  # noqa: BLE001 - surface to extension

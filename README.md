@@ -52,6 +52,8 @@ This installs the host under `~/.local/share/ytdl-native-host/` and registers it
 
 You can close the popup while downloading. The toolbar badge shows ↓ while downloading, ✓ when finished, or ! if it fails. Reopen the popup to see progress and the result. One download runs at a time; keep Brave running until it finishes.
 
+Click **Cancel download** to stop the active download. The button shows **Canceling…** until the downloader and its child processes stop and temporary files are cleaned up. You can then select a folder and start another track. Update the native host after installing this feature.
+
 ### Reload after changes
 
 Reload the extension on `brave://extensions`, and re-run `install.sh` if you change `native-host/ytdl_host.py`. For this update, also update the installed `ytdl` CLI from `ytdl.sh` so it honors the selected root.

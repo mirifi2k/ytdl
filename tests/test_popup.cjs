@@ -3,6 +3,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 let stored = '/tmp/Original Music';
 let invalid = false;
+let downloadState = { running: false };
 const fallback = new Map();
 const localStorage = {
   getItem: key => fallback.get(key) ?? null,
@@ -35,7 +36,11 @@ function openPopup(withStorage = true) {
     tabs: { query: async () => [{ url: 'https://youtu.be/123' }] },
     runtime: { sendMessage: async (message) => {
       requests.push(message);
-      if (message.cmd === 'download_state') return { running: false };
+      if (message.cmd === 'download_state') return downloadState;
+      if (message.cmd === 'cancel_download') {
+        downloadState = { ...downloadState, canceling: true };
+        return { ok: true, state: downloadState };
+      }
       if (message.cmd === 'status') return { ok: true, ytdl: true };
       if (message.cmd === 'list_folders') return invalid
         ? { ok: false, error: 'Missing folder' }
@@ -77,6 +82,21 @@ const tick = () => new Promise(resolve => setImmediate(resolve));
   el = openPopup(false);
   await tick();
   assert.equal(el('root').value, '/tmp/Fallback Music');
+  downloadState = { running: true, url: 'https://youtu.be/123', folder: '.', log: 'Downloading' };
+  el = openPopup();
+  await tick();
+  assert.equal(el('cancel').hidden, false);
+  assert.equal(el('cancel').disabled, false);
+  await el('cancel').listeners.click();
+  assert.equal(el('cancel').textContent, 'Canceling…');
+  assert.equal(el('cancel').disabled, true);
+  assert.equal(el('download').disabled, true);
+  downloadState = { ...downloadState, running: false, canceling: false, canceled: true, log: 'Download canceled.' };
+  el = openPopup();
+  await tick();
+  assert.equal(el('cancel').hidden, true);
+  assert.equal(el('download').disabled, false);
+  assert.equal(el('folders').children.length, 2);
   stored = undefined;
   el = openPopup();
   await tick();

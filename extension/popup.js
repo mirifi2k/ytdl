@@ -4,6 +4,7 @@ const mainEl = document.getElementById("main");
 const filterEl = document.getElementById("filter");
 const foldersEl = document.getElementById("folders");
 const downloadBtn = document.getElementById("download");
+const cancelBtn = document.getElementById("cancel");
 const logEl = document.getElementById("log");
 
 const rootEl = document.getElementById("root");
@@ -50,14 +51,32 @@ function renderDownload(state) {
   downloading = state.running;
   downloadBtn.textContent = downloading ? "Downloading…" : "Download";
   downloadBtn.disabled = downloading || !selectedFolder || !videoUrl;
+  cancelBtn.hidden = !downloading;
+  cancelBtn.disabled = Boolean(state.canceling);
+  cancelBtn.textContent = state.canceling ? "Canceling…" : "Cancel download";
   if (state.url) {
     const context = `${state.url} → ${state.folder}`;
-    showLog(`${context}\n\n${state.log}`, downloading ? "" : state.ok ? "success" : "error");
+    showLog(`${context}\n\n${state.log}`,
+      downloading || state.canceled ? "" : state.ok ? "success" : "error");
   }
 }
 
 async function refreshDownload() {
   renderDownload(await request("download_state"));
+}
+
+async function cancelDownload() {
+  cancelBtn.disabled = true;
+  cancelBtn.textContent = "Canceling…";
+  try {
+    const res = await request("cancel_download");
+    if (!res.ok) throw new Error(res.error || "Could not cancel download.");
+    renderDownload(res.state);
+  } catch (err) {
+    cancelBtn.disabled = false;
+    cancelBtn.textContent = "Cancel download";
+    showLog(String(err.message || err), "error");
+  }
 }
 
 function renderFolders() {
@@ -192,5 +211,6 @@ rootForm.addEventListener("submit", async (event) => {
 
 filterEl.addEventListener("input", renderFolders);
 downloadBtn.addEventListener("click", startDownload);
+cancelBtn.addEventListener("click", cancelDownload);
 
 init().catch((err) => showStatus(String(err.message || err), "error"));

@@ -40,8 +40,9 @@ chrome.tabs.onActivated.addListener(async ({ tabId }) => {
 // The service worker owns native ports, so closing the popup cannot end a job.
 // A connected native messaging port keeps the MV3 worker alive during downloads.
 let downloadState = { running: false, url: null, folder: null, log: "", ok: null };
+let activeDownloadPort = null;
 
-function nativeRequest(message, onProgress = () => {}) {
+function nativeRequest(message, onProgress = () => {}, onConnect = () => {}) {
   return new Promise((resolve, reject) => {
     const port = chrome.runtime.connectNative("com.ytdl");
     port.onDisconnect.addListener(() => {
@@ -56,6 +57,7 @@ function nativeRequest(message, onProgress = () => {}) {
       }
     });
     port.postMessage(message);
+    onConnect(port);
   });
 }
 
@@ -68,15 +70,19 @@ async function runDownload(message) {
   try {
     const result = await nativeRequest(message, (line) => {
       downloadState.log = `${downloadState.log}\n${line}`.slice(-32000);
-    });
+    }, (port) => { activeDownloadPort = port; });
     downloadState.ok = Boolean(result.ok);
+    downloadState.canceled = Boolean(result.canceled);
     downloadState.log = (result.output || result.error || "Done.").slice(-32000);
   } catch (err) {
     downloadState.ok = false;
     downloadState.log = String(err.message || err);
   } finally {
     downloadState.running = false;
-    setDownloadBadge(downloadState.ok ? "✓" : "!", downloadState.ok ? "#29834a" : "#b83c3c");
+    downloadState.canceling = false;
+    activeDownloadPort = null;
+    setDownloadBadge(downloadState.canceled ? "" : downloadState.ok ? "✓" : "!",
+      downloadState.ok ? "#29834a" : "#b83c3c");
   }
 }
 
@@ -84,6 +90,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (sender.id !== chrome.runtime.id) return;
   if (message.cmd === "download_state") {
     sendResponse(downloadState);
+  } else if (message.cmd === "cancel_download") {
+    try {
+      if (downloadState.running && !downloadState.canceling && activeDownloadPort) {
+        activeDownloadPort.postMessage({ cmd: "cancel" });
+        downloadState.canceling = true;
+      }
+      sendResponse({ ok: true, state: downloadState });
+    } catch (err) {
+      sendResponse({ ok: false, error: String(err.message || err) });
+    }
   } else if (message.cmd === "download") {
     if (downloadState.running) {
       sendResponse({ ok: false, error: "A download is already running." });
@@ -91,7 +107,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({ ok: false, error: "A supported track URL and folder are required." });
     } else {
       downloadState = {
-        running: true, url: message.url, folder: message.folder,
+        running: true, canceling: false, canceled: false, url: message.url, folder: message.folder,
         log: "Starting download…", ok: null,
       };
       setDownloadBadge("↓", "#267e90");

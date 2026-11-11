@@ -37,8 +37,8 @@ class DownloadRoot(unittest.TestCase):
     @patch.object(host, "find_ytdl", return_value="/bin/ytdl")
     @patch.object(host.subprocess, "Popen")
     def test_download_uses_selected_root(self, popen, _find):
-        popen.return_value = Mock(stdout=io.StringIO(""), wait=lambda: 0)
         for folder in (".", "House/Deep"):
+            popen.return_value = Mock(stdout=io.StringIO(""), wait=lambda: 0)
             self.assertTrue(host.handle_download("https://youtu.be/123", folder, self.root)["ok"])
             args, kwargs = popen.call_args
             self.assertEqual(args[0], ["/bin/ytdl", "https://youtu.be/123", folder])
