@@ -30,7 +30,8 @@ const message = (cmd, extra = {}) => new Promise(resolve => {
 });
 const tick = () => new Promise(resolve => setImmediate(resolve));
 (async () => {
-  const started = await message('download', { url: 'https://youtube.com/watch?v=123', folder: 'House' });
+  const started = await message('download', { url: 'https://youtube.com/watch?v=123', folder: 'House', root: '/tmp/My Music' });
+  assert.equal(ports[0].message.root, '/tmp/My Music');
   assert.equal(started.state.running, true);
   assert.equal(badge, '↓');
   // No popup port exists: the background owns the connection independently.
@@ -39,7 +40,8 @@ const tick = () => new Promise(resolve => setImmediate(resolve));
   ports[0].onMessage.listeners[0]({ type: 'progress', line: '50%' });
   assert.match((await message('download_state')).log, /50%/);
   // Reopening/status requests use another host and cannot consume download events.
-  const status = message('status');
+  const status = message('status', { root: '/tmp/My Music' });
+  assert.equal(ports[1].message.root, '/tmp/My Music');
   ports[1].onMessage.listeners[0]({ ok: true, ytdl: true });
   assert.equal((await status).ytdl, true);
   assert.equal(ports[0].disconnected, false);

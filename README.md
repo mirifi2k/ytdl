@@ -1,6 +1,6 @@
 # ytdl
 
-CLI plus a Brave extension for downloading the current YouTube video or SoundCloud track into a folder under `/Volumes/SSD/Music`.
+CLI plus a Brave extension for downloading the current YouTube video or SoundCloud track into a folder under a configurable download root (default: `/Volumes/SSD/Music`).
 
 ## CLI
 
@@ -18,7 +18,7 @@ ytdl "https://soundcloud.com/artist/track" "Artist" "Track" "Music/House"
 
 SoundCloud downloads use the best available stream, then the same metadata parsing, tagging, and renaming as YouTube. Manual artist/track overrides work for both. Open individual tracks rather than profiles or playlists; private track URLs retain their access token.
 
-`folder` is relative to `/Volumes/SSD/Music`.
+`folder` is relative to `/Volumes/SSD/Music`. Set `YTDL_ROOT` to use another root, e.g. `YTDL_ROOT="$HOME/Music" ytdl <url> House`.
 
 ## Brave extension
 
@@ -41,14 +41,15 @@ This installs the host under `~/.local/share/ytdl-native-host/` and registers it
 
 ### 3. Use it
 
-1. Mount the SSD so `/Volumes/SSD/Music` exists
+1. Ensure your download folder exists
 2. Ensure `ytdl` is on your `PATH` (e.g. `/usr/local/bin/ytdl`)
 3. Open a YouTube (or YouTube Music) watch page, or a SoundCloud track page
 4. Click the **ytdl** toolbar icon
-5. Pick a folder and click **Download**
+5. Enter an absolute path in **Download folder** and click **Save** (for example, `/Users/you/Music`). The extension remembers it across popup and browser restarts. `~` paths are also supported.
+6. Pick a subfolder and click **Download**. The list includes all non-hidden folders recursively; choose **. (Download folder)** to download directly into the root.
 
 You can close the popup while downloading. The toolbar badge shows ↓ while downloading, ✓ when finished, or ! if it fails. Reopen the popup to see progress and the result. One download runs at a time; keep Brave running until it finishes.
 
 ### Reload after changes
 
-Reload the extension on `brave://extensions`, and re-run `install.sh` if you change `native-host/ytdl_host.py`.
+Reload the extension on `brave://extensions`, and re-run `install.sh` if you change `native-host/ytdl_host.py`. For this update, also update the installed `ytdl` CLI from `ytdl.sh` so it honors the selected root.

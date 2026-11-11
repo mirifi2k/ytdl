@@ -6,10 +6,29 @@ const foldersEl = document.getElementById("folders");
 const downloadBtn = document.getElementById("download");
 const logEl = document.getElementById("log");
 
+const rootEl = document.getElementById("root");
+const rootForm = document.getElementById("root-form");
+const saveRootBtn = document.getElementById("save-root");
+const defaultRoot = "/Volumes/SSD/Music";
+let downloadRoot = defaultRoot;
 let folders = [];
 let selectedFolder = null;
 let videoUrl = null;
 let downloading = false;
+
+async function readDownloadRoot() {
+  if (chrome.storage?.local) {
+    const saved = await chrome.storage.local.get("downloadRoot");
+    return saved.downloadRoot || localStorage.getItem("downloadRoot") || defaultRoot;
+  }
+  return localStorage.getItem("downloadRoot") || defaultRoot;
+}
+
+async function saveDownloadRoot(root) {
+  // Keep a fallback for browsers that have not reloaded the storage permission.
+  localStorage.setItem("downloadRoot", root);
+  if (chrome.storage?.local) await chrome.storage.local.set({ downloadRoot: root });
+}
 
 function showStatus(message, kind = "") {
   statusBlock.hidden = false;
@@ -24,7 +43,7 @@ function showLog(text, kind = "") {
 }
 
 function request(cmd, payload = {}) {
-  return chrome.runtime.sendMessage({ cmd, ...payload });
+  return chrome.runtime.sendMessage({ cmd, root: downloadRoot, ...payload });
 }
 
 function renderDownload(state) {
@@ -64,7 +83,7 @@ function renderFolders() {
 
     const path = document.createElement("span");
     path.className = "path";
-    path.textContent = folder;
+    path.textContent = folder === "." ? ". (Download folder)" : folder;
     btn.appendChild(path);
 
     btn.addEventListener("click", () => {
@@ -79,16 +98,27 @@ function renderFolders() {
   downloadBtn.disabled = downloading || !selectedFolder || !videoUrl;
 }
 
-async function loadFolders() {
-  const res = await request("list_folders");
-  if (!res.ok) {
-    throw new Error(res.error || "Could not list folders.");
-  }
-  folders = res.folders || [];
-  if (folders.length && !selectedFolder) {
-    selectedFolder = folders[0];
-  }
+async function loadFolders(root = downloadRoot, persist = false) {
+  saveRootBtn.disabled = true;
+  // Clear stale destinations while validating or changing the root.
+  folders = [];
+  selectedFolder = null;
   renderFolders();
+  try {
+    const res = await request("list_folders", { root });
+    if (!res.ok) throw new Error(res.error || "Could not list folders.");
+    const resolvedRoot = res.root || root;
+    if (persist) await saveDownloadRoot(resolvedRoot);
+    downloadRoot = resolvedRoot;
+    rootEl.value = downloadRoot;
+    folders = res.folders || [];
+    selectedFolder = folders[0] || null;
+    renderFolders();
+    mainEl.hidden = false;
+    showStatus("Ready", "ok");
+  } finally {
+    saveRootBtn.disabled = false;
+  }
 }
 
 async function startDownload() {
@@ -111,6 +141,8 @@ async function startDownload() {
 }
 
 async function init() {
+  downloadRoot = await readDownloadRoot();
+  rootEl.value = downloadRoot;
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   const url = tab?.url || "";
 
@@ -137,18 +169,8 @@ async function init() {
       return;
     }
 
-    if (!status.ssd) {
-      showStatus(
-        "SSD is not mounted at /Volumes/SSD/Music. Mount it and reopen the popup.",
-        "error"
-      );
-      return;
-    }
-
-    showStatus(`Ready · ${status.ytdl_path || "ytdl"}`, "ok");
-    mainEl.hidden = false;
-    await loadFolders();
     setInterval(() => refreshDownload().catch(() => {}), 500);
+    await loadFolders();
   } catch (err) {
     showStatus(
       `${err.message || err}\n\nRun native-host/install.sh after loading the unpacked extension.`,
@@ -157,7 +179,18 @@ async function init() {
   }
 }
 
+rootForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const root = rootEl.value.trim();
+  if (!root) return;
+  try {
+    await loadFolders(root, true);
+  } catch (err) {
+    showStatus(String(err.message || err), "error");
+  }
+});
+
 filterEl.addEventListener("input", renderFolders);
 downloadBtn.addEventListener("click", startDownload);
 
-init();
+init().catch((err) => showStatus(String(err.message || err), "error"));

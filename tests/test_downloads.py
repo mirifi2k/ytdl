@@ -20,9 +20,7 @@ class Downloads(unittest.TestCase):
         (self.music / "House").mkdir(parents=True)
         self.bin = self.root / "bin"
         self.bin.mkdir()
-        script = (ROOT / "ytdl.sh").read_text().replace(
-            'SSD_ROOT="/Volumes/SSD/Music"', f'SSD_ROOT="{self.music}"'
-        )
+        script = (ROOT / "ytdl.sh").read_text()
         self.script = self.root / "ytdl.sh"
         self.script.write_text(script)
         shutil.copy(ROOT / "metadata_parser.py", self.root)
@@ -33,7 +31,7 @@ class Downloads(unittest.TestCase):
             str(self.fixture),
         ], check=True)
         self.env = dict(os.environ, PATH=f"{self.bin}{os.pathsep}{os.environ['PATH']}",
-                        FIXTURE=str(self.fixture))
+                        FIXTURE=str(self.fixture), YTDL_ROOT=str(self.music))
 
     def stub(self, name, body):
         path = self.bin / name

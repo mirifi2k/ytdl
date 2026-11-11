@@ -28,7 +28,7 @@ body {
 body {
   width: 340px;
   max-height: 520px;
-  overflow: hidden;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -94,7 +94,7 @@ header {
   color: var(--muted);
 }
 
-input[type="search"] {
+input {
   width: 100%;
   padding: 8px 10px;
   border: 1px solid var(--border);
@@ -104,7 +104,7 @@ input[type="search"] {
   outline: none;
 }
 
-input[type="search"]:focus {
+input:focus {
   border-color: var(--accent);
 }
 
@@ -204,4 +204,16 @@ input[type="search"]:focus {
 
 [hidden] {
   display: none !important;
+}
+
+#root-form { display: flex; flex-direction: column; gap: 8px; }
+.root-controls { display: flex; gap: 8px; }
+.root-controls input { min-width: 0; flex: 1; }
+#save-root {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  color: var(--text);
+  cursor: pointer;
 }

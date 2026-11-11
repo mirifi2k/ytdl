@@ -2,7 +2,7 @@
 
 set -uo pipefail
 
-SSD_ROOT="/Volumes/SSD/Music"
+SSD_ROOT="${YTDL_ROOT:-/Volumes/SSD/Music}"
 
 log() {
     printf '  %-12s %s\n' "$1" "$2"
@@ -75,7 +75,7 @@ fi
 # ------------------------------------------------------------
 
 if [ ! -d "$SSD_ROOT" ]; then
-    echo "ERROR: SSD is not mounted: $SSD_ROOT" >&2
+    echo "ERROR: Download folder does not exist: $SSD_ROOT" >&2
     exit 1
 fi
 

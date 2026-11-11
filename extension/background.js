@@ -95,11 +95,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         log: "Starting download…", ok: null,
       };
       setDownloadBadge("↓", "#267e90");
-      void runDownload({ cmd: "download", url: message.url, folder: message.folder });
+      void runDownload({ cmd: "download", url: message.url, folder: message.folder, root: message.root });
       sendResponse({ ok: true, state: downloadState });
     }
   } else if (message.cmd === "status" || message.cmd === "list_folders") {
-    nativeRequest({ cmd: message.cmd }).then(sendResponse, (err) => {
+    nativeRequest({ cmd: message.cmd, root: message.root }).then(sendResponse, (err) => {
       sendResponse({ ok: false, error: String(err.message || err) });
     });
     return true;

@@ -14,6 +14,16 @@
 
     <section id="status-block" class="status" hidden></section>
 
+    <form id="root-form">
+      <label class="field-label" for="root">Download folder</label>
+      <div class="root-controls">
+        <input id="root" type="text" placeholder="/Volumes/SSD/Music" required
+          autocomplete="off" spellcheck="false" aria-describedby="root-hint" />
+        <button id="save-root" type="submit">Save</button>
+      </div>
+      <p id="root-hint" class="hint">Enter an absolute folder path. Saved on this browser.</p>
+    </form>
+
     <section id="main" hidden>
       <label class="field-label" for="filter">Folder</label>
       <input

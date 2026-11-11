@@ -11,7 +11,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-SSD_ROOT = Path("/Volumes/SSD/Music")
+DEFAULT_ROOT = Path("/Volumes/SSD/Music")
 
 
 def read_message() -> dict | None:
@@ -44,15 +44,22 @@ def find_ytdl() -> str | None:
     return None
 
 
-def list_folders() -> list[str]:
-    if not SSD_ROOT.is_dir():
+def download_root(value: str | None = None) -> Path:
+    root = Path(value).expanduser() if value else DEFAULT_ROOT
+    if not root.is_absolute():
+        raise ValueError("Download folder must be an absolute path.")
+    return root.resolve()
+
+
+def list_folders(root: Path) -> list[str]:
+    if not root.is_dir():
         return []
 
     folders: list[str] = []
-    for root, dirnames, _filenames in os.walk(SSD_ROOT):
+    for current, dirnames, _filenames in os.walk(root):
         # Skip hidden directories
         dirnames[:] = [d for d in dirnames if not d.startswith(".")]
-        rel = Path(root).relative_to(SSD_ROOT)
+        rel = Path(current).relative_to(root)
         if rel.parts:
             folders.append(rel.as_posix())
 
@@ -60,27 +67,27 @@ def list_folders() -> list[str]:
     return folders
 
 
-def handle_status() -> dict:
+def handle_status(root: Path = DEFAULT_ROOT) -> dict:
     ytdl = find_ytdl()
     return {
         "ok": True,
         "ytdl": bool(ytdl),
         "ytdl_path": ytdl,
-        "ssd": SSD_ROOT.is_dir(),
-        "ssd_root": str(SSD_ROOT),
+        "root_exists": root.is_dir(),
+        "root": str(root),
     }
 
 
-def handle_list_folders() -> dict:
-    if not SSD_ROOT.is_dir():
+def handle_list_folders(root: Path = DEFAULT_ROOT) -> dict:
+    if not root.is_dir():
         return {
             "ok": False,
-            "error": f"SSD is not mounted: {SSD_ROOT}",
+            "error": f"Download folder does not exist: {root}",
         }
-    return {"ok": True, "folders": list_folders()}
+    return {"ok": True, "root": str(root), "folders": [".", *list_folders(root)]}
 
 
-def handle_download(url: str, folder: str) -> dict:
+def handle_download(url: str, folder: str, root: Path = DEFAULT_ROOT) -> dict:
     ytdl = find_ytdl()
     if not ytdl:
         return {"ok": False, "error": "ytdl was not found on this computer."}
@@ -88,10 +95,10 @@ def handle_download(url: str, folder: str) -> dict:
     if not url or not folder:
         return {"ok": False, "error": "url and folder are required."}
 
-    # Prevent path escape outside Music root
-    destination = (SSD_ROOT / folder).resolve()
+    # Prevent path escape outside the selected root
+    destination = (root / folder).resolve()
     try:
-        destination.relative_to(SSD_ROOT.resolve())
+        destination.relative_to(root.resolve())
     except ValueError:
         return {"ok": False, "error": "Invalid folder path."}
 
@@ -99,6 +106,7 @@ def handle_download(url: str, folder: str) -> dict:
         return {"ok": False, "error": f"Destination folder does not exist: {destination}"}
 
     env = os.environ.copy()
+    env["YTDL_ROOT"] = str(root.resolve())
     # GUI-launched hosts often have a minimal PATH
     path_parts = env.get("PATH", "").split(os.pathsep)
     for extra in ("/usr/local/bin", "/opt/homebrew/bin", "/usr/bin", "/bin"):
@@ -143,15 +151,17 @@ def main() -> int:
 
         cmd = message.get("cmd")
         try:
+            root = download_root(message.get("root"))
             if cmd == "status":
-                send_message(handle_status())
+                send_message(handle_status(root))
             elif cmd == "list_folders":
-                send_message(handle_list_folders())
+                send_message(handle_list_folders(root))
             elif cmd == "download":
                 send_message(
                     handle_download(
                         str(message.get("url") or ""),
                         str(message.get("folder") or ""),
+                        root,
                     )
                 )
             else:
