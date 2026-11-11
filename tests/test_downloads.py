@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -81,7 +82,19 @@ for i in range({count}):
         self.assertEqual(result.returncode, 7)
         self.assertIn("scdl failed", result.stderr)
 
+    def test_missing_mutagen_fails_before_downloading(self):
+        self.stub("yt-dlp", 'raise RuntimeError("downloader must not run")\n')
+        python = self.bin / "python-without-mutagen"
+        python.write_text('#!/bin/sh\nexit 1\n')
+        python.chmod(0o755)
+        self.env["YTDL_PYTHON"] = str(python)
+        result = self.run_cli("https://youtube.com/watch?v=123")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("mutagen is required", result.stderr)
+        self.assertNotIn("Downloading...", result.stdout)
+
     def test_youtube_still_uses_ytdlp(self):
+        self.env["YTDL_PYTHON"] = sys.executable
         self.stub("scdl", 'raise RuntimeError("wrong downloader")\n')
         self.stub("yt-dlp", '''import os, shutil, sys
 from pathlib import Path

@@ -43,6 +43,8 @@ class DownloadRoot(unittest.TestCase):
             args, kwargs = popen.call_args
             self.assertEqual(args[0], ["/bin/ytdl", "https://youtu.be/123", folder])
             self.assertEqual(kwargs["env"]["YTDL_ROOT"], str(self.root))
+            self.assertEqual(kwargs["env"]["YTDL_PYTHON"],
+                             host.os.environ.get("YTDL_PYTHON", host.sys.executable))
 
     @patch.object(host, "find_ytdl", return_value="/bin/ytdl")
     @patch.object(host.subprocess, "Popen")

@@ -51,12 +51,20 @@ if [[ "$link" =~ ^https?://(www\.|m\.)?soundcloud\.com/ ]] ||
     downloader="scdl"
 fi
 
-for command in "$downloader" ffmpeg ffprobe python3; do
+PYTHON_BIN="${YTDL_PYTHON:-python3}"
+
+for command in "$downloader" ffmpeg ffprobe "$PYTHON_BIN"; do
     if ! command -v "$command" >/dev/null 2>&1; then
         echo "ERROR: '$command' is not installed or not in PATH." >&2
         exit 1
     fi
 done
+
+if ! "$PYTHON_BIN" -c 'import mutagen' >/dev/null 2>&1; then
+    echo "ERROR: mutagen is required by Python '$PYTHON_BIN'." >&2
+    echo "Install it in that Python environment, or set YTDL_PYTHON to a Python with mutagen installed." >&2
+    exit 1
+fi
 
 # ------------------------------------------------------------
 # Metadata parser
@@ -156,7 +164,7 @@ fi
 if [ "$downloader" = "scdl" ]; then
     # scdl embeds the source metadata. Inspect audio rather than parsing its logs
     # or assuming a filename/extension (streams can be MP3 or M4A).
-    python3 - "$tmpdir" "$info_file" <<'PYSC'
+    "$PYTHON_BIN" - "$tmpdir" "$info_file" <<'PYSC'
 import json
 import subprocess
 import sys
@@ -261,7 +269,7 @@ fi
 # Tag, rename and move
 # ------------------------------------------------------------
 
-python3 "${python_args[@]}"
+"$PYTHON_BIN" "${python_args[@]}"
 status=$?
 
 if [ "$status" -ne 0 ]; then

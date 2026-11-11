@@ -11,6 +11,8 @@ ytdl <url> <artist> <track> <folder>
 
 SoundCloud track URLs use [scdl](https://github.com/scdl-org/scdl); YouTube URLs use `yt-dlp`. Install `scdl` (for example, `pipx install scdl`), `yt-dlp`, `ffmpeg` (including `ffprobe`), and Python 3 with `mutagen`. Ensure these commands are on the native host's PATH (`/opt/homebrew/bin` and `/usr/local/bin` are included).
 
+The extension uses the native host's Python for metadata processing. For CLI use, set `YTDL_PYTHON=/path/to/python` to select an environment with `mutagen`; otherwise `python3` from PATH is used. Dependencies are checked before downloading.
+
 ```bash
 ytdl "https://soundcloud.com/artist/track" "Music/House"
 ytdl "https://soundcloud.com/artist/track" "Artist" "Track" "Music/House"

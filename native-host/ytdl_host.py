@@ -107,6 +107,7 @@ def handle_download(url: str, folder: str, root: Path = DEFAULT_ROOT) -> dict:
 
     env = os.environ.copy()
     env["YTDL_ROOT"] = str(root.resolve())
+    env.setdefault("YTDL_PYTHON", sys.executable)
     # GUI-launched hosts often have a minimal PATH
     path_parts = env.get("PATH", "").split(os.pathsep)
     for extra in ("/usr/local/bin", "/opt/homebrew/bin", "/usr/bin", "/bin"):
