@@ -1,6 +1,6 @@
 # ytdl
 
-CLI plus a Brave extension for downloading the current YouTube video or SoundCloud track into a folder under a configurable download root (default: `/Volumes/SSD/Music`).
+CLI plus a Brave extension for downloading the current YouTube video, a YouTube playlist, or a SoundCloud track into a folder under a configurable download root (default: `/Volumes/SSD/Music`).
 
 ## CLI
 
@@ -21,6 +21,14 @@ ytdl "https://soundcloud.com/artist/track" "Artist" "Track" "Music/House"
 SoundCloud downloads use the best available stream, then the same metadata parsing, tagging, and renaming as YouTube. Manual artist/track overrides work for both. Open individual tracks rather than profiles or playlists; private track URLs retain their access token.
 
 `folder` is relative to `/Volumes/SSD/Music`. Set `YTDL_ROOT` to use another root, e.g. `YTDL_ROOT="$HOME/Music" ytdl <url> House`.
+
+YouTube playlist pages (`https://www.youtube.com/playlist?list=...`, including YouTube Music) download all entries into the selected folder. Each track gets its own automatic metadata, tags, and filename. Watch URLs with a `list` parameter still download only the current video; open the playlist page to download the full list. Manual artist/track overrides apply only to individual tracks.
+
+```bash
+ytdl "https://www.youtube.com/playlist?list=PL..." "Music/House"
+```
+
+If an entry fails, remaining entries are still attempted and successfully downloaded tracks are processed. The job reports failure if any download or metadata processing failed. Cancel stops the whole playlist and cleans up temporary files.
 
 ## Brave extension
 
@@ -45,7 +53,7 @@ This installs the host under `~/.local/share/ytdl-native-host/` and registers it
 
 1. Ensure your download folder exists
 2. Ensure `ytdl` is on your `PATH` (e.g. `/usr/local/bin/ytdl`)
-3. Open a YouTube (or YouTube Music) watch page, or a SoundCloud track page
+3. Open a YouTube (or YouTube Music) watch or playlist page, or a SoundCloud track page
 4. Click the **ytdl** toolbar icon
 5. Enter an absolute path in **Download folder** and click **Save** (for example, `/Users/you/Music`). The extension remembers it across popup and browser restarts. `~` paths are also supported.
 6. Pick a subfolder and click **Download**. The list includes all non-hidden folders recursively; choose **. (Download folder)** to download directly into the root.

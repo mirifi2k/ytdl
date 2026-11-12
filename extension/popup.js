@@ -166,8 +166,8 @@ async function init() {
   const url = tab?.url || "";
 
   if (!isSupportedTrackUrl(url)) {
-    pageTitleEl.textContent = "Not a supported track page";
-    showStatus("Open a YouTube video or SoundCloud track, then try again.", "error");
+    pageTitleEl.textContent = "Not a supported download page";
+    showStatus("Open a YouTube video, YouTube playlist, or SoundCloud track, then try again.", "error");
     return;
   }
 

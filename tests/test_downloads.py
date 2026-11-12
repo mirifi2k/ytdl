@@ -93,6 +93,35 @@ for i in range({count}):
         self.assertIn("mutagen is required", result.stderr)
         self.assertNotIn("Downloading...", result.stdout)
 
+    def test_youtube_playlist_processes_every_track_even_after_download_error(self):
+        self.env["YTDL_PYTHON"] = sys.executable
+        self.stub("yt-dlp", '''import os, shutil, sys
+from pathlib import Path
+args = sys.argv[1:]
+assert "--yes-playlist" in args and "--no-playlist" not in args
+info = Path(args[args.index("--print-to-file") + 2])
+with info.open("w") as output:
+    for i in range(3):
+        audio = info.parent / f"video{i}.mp3"
+        shutil.copy(os.environ["FIXTURE"], audio)
+        output.write(f"{audio}|||Artist {i}|||Track {i}|||Artist {i} - Track {i}\\n")
+raise SystemExit(int(os.environ.get("DOWNLOAD_STATUS", "0")))
+''')
+        for code in (0, 1):
+            self.env["DOWNLOAD_STATUS"] = str(code)
+            result = self.run_cli("https://music.youtube.com/playlist?list=PL123")
+            self.assertEqual(result.returncode, code, result.stdout + result.stderr)
+            for i in range(3):
+                self.assertTrue((self.music / "House" / f"Track {i}.mp3").is_file())
+            self.assertIn("3 track(s)", result.stdout)
+
+    def test_playlist_rejects_manual_track_override(self):
+        self.env["YTDL_PYTHON"] = sys.executable
+        self.stub("yt-dlp", 'raise RuntimeError("must not download")\n')
+        result = self.run_cli("https://youtube.com/playlist?list=PL123", "Artist", "Track")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("only supported for individual tracks", result.stderr)
+
     def test_youtube_still_uses_ytdlp(self):
         self.env["YTDL_PYTHON"] = sys.executable
         self.stub("scdl", 'raise RuntimeError("wrong downloader")\n')

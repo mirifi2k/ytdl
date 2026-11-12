@@ -3,12 +3,12 @@ importScripts("urls.js");
 async function updateActionForTab(tabId, url) {
   if (isSupportedTrackUrl(url)) {
     await chrome.action.enable(tabId);
-    await chrome.action.setTitle({ tabId, title: "ytdl — download this track" });
+    await chrome.action.setTitle({ tabId, title: "ytdl — download this track or playlist" });
   } else {
     await chrome.action.disable(tabId);
     await chrome.action.setTitle({
       tabId,
-      title: "ytdl — open a YouTube or SoundCloud track",
+      title: "ytdl — open a YouTube video, playlist, or SoundCloud track",
     });
   }
 }
@@ -104,7 +104,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (downloadState.running) {
       sendResponse({ ok: false, error: "A download is already running." });
     } else if (!isSupportedTrackUrl(message.url) || typeof message.folder !== "string" || !message.folder) {
-      sendResponse({ ok: false, error: "A supported track URL and folder are required." });
+      sendResponse({ ok: false, error: "A supported track or playlist URL and folder are required." });
     } else {
       downloadState = {
         running: true, canceling: false, canceled: false, url: message.url, folder: message.folder,

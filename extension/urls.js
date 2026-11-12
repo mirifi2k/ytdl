@@ -11,6 +11,17 @@ function isYouTubeWatchUrl(url) {
   }
 }
 
+function isYouTubePlaylistUrl(url) {
+  try {
+    const u = new URL(url);
+    return /^https?:$/.test(u.protocol) &&
+      /^(www\.|m\.|music\.)?youtube\.com$/.test(u.hostname) &&
+      u.pathname === "/playlist" && Boolean(u.searchParams.get("list"));
+  } catch (_) {
+    return false;
+  }
+}
+
 function isSoundCloudTrackUrl(url) {
   try {
     const u = new URL(url);
@@ -30,10 +41,13 @@ function isSoundCloudTrackUrl(url) {
 }
 
 function isSupportedTrackUrl(url) {
-  return isYouTubeWatchUrl(url) || isSoundCloudTrackUrl(url);
+  return isYouTubeWatchUrl(url) || isYouTubePlaylistUrl(url) || isSoundCloudTrackUrl(url);
 }
 
 function normalizeTrackUrl(url) {
+  if (isYouTubePlaylistUrl(url)) {
+    return `https://www.youtube.com/playlist?list=${encodeURIComponent(new URL(url).searchParams.get("list"))}`;
+  }
   if (!isYouTubeWatchUrl(url)) return url;
   const u = new URL(url);
   const id = u.hostname === "youtu.be" ? u.pathname.split("/")[1] : u.searchParams.get("v");
